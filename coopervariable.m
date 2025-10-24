@@ -1,0 +1,147 @@
+function coopervariable()
+    m_sun = 1;
+    m_planet = 1/330000;
+    G = 4*pi^2/m_sun;
+    ti = 0;
+    tf = 10;
+    V0 = [1; 0; 0; 6.28;];
+
+    %Heun's method (s = 2)
+    Heun_struct.A = [0, 0; 1, 0;];
+    Heun_struct.B = [0.5, 0.5;];
+    Heun_struct.C = [0; 1;];
+    Heun_struct.m_sun = m_sun;
+    Heun_struct.m_planet = m_planet;
+    Heun_struct.G = G;
+
+
+    %Ralston's third order method (s = 3)
+    Ral_struct.A = [0,0,0;0.5,0,0;0,0.75,0;];
+    Ral_struct.B = [2/9;1/3;4/9;];
+    Ral_struct.C = [0;0.5;0.75;];
+    Ral_struct.m_sun = m_sun;
+    Ral_struct.m_planet = m_planet;
+    Ral_struct.G = G;
+
+    %og Runge-Kutta (s = 4)
+    og_struct.A = [0,0,0,0;1/2,0,0,0;0,1/2,0,0;0,0,1,0;];
+    og_struct.B = [1/6,1/3,1/3,1/6;];
+    og_struct.C = [0;1/2;1/2;1;];
+    og_struct.m_sun = m_sun;
+    og_struct.m_planet = m_planet;
+    og_struct.G = G;
+
+    DormandPrince = struct();
+    DormandPrince.C = [0, 1/5, 3/10, 4/5, 8/9, 1, 1];
+    DormandPrince.B = [35/384, 0, 500/1113, 125/192, -2187/6784, 11/84, 0;...
+    5179/57600, 0, 7571/16695, 393/640, -92097/339200, 187/2100, 1/40];
+    DormandPrince.A = [0,0,0,0,0,0,0;
+    1/5, 0, 0, 0,0,0,0;...
+    3/40, 9/40, 0, 0, 0, 0,0;...
+    44/45, -56/15, 32/9, 0, 0, 0,0;...
+    19372/6561, -25360/2187, 64448/6561, -212/729, 0, 0,0;...
+    9017/3168, -355/33, 46732/5247, 49/176, -5103/18656, 0,0;...
+    35/384, 0, 500/1113, 125/192, -2187/6784, 11/84,0];
+
+    tspan = [ti,tf];
+
+
+    %in class local truncation figure
+    n_samples = 60;
+    h_ref_list = logspace(-3, 1, n_samples)
+
+    abs_diff_list = zeros(1, n_samples);
+
+    for i = 1:length(h_ref_list);
+        h_ref = h_ref_list(i);
+        V_list = compute_planetary_motion(ti+h_ref,V0,orbit_params);
+
+        [XB1, XB2, ~] = explicit_RK_step_embedded(my_rate, ti, V0, h_ref, DormandPrince);
+
+        abs_diff_list(i) = norm(V_list-V0)
+        tr_error_list1(i) = norm(XB1-V_list);
+        tr_error_list2(i) = norm(XB1-V_list);
+    end
+
+    figure
+    loglog(h_ref_list, abs_diff_list)
+    loglog(h_ref_list, tr_error_list1)
+    loglog(h_ref_list, tr_error_list2)
+
+
+
+end
+
+function [XB1, XB2, num_evals] = RK_step_embedded(rate_func_in,t,XA,h,BT_struct)
+    as = BT_struct.A;
+    bs = BT_struct.B;
+    cs = BT_struct.C;
+    s = length(cs);
+    m = length(XA);
+    ks = zeros(m, s);
+    for i = 1:s
+        SUMak = ks*(as(i,:)');
+        ki = rate_func_in((t+cs(i)*h), (XA+h*SUMak), BT_struct);
+        ks(:, i) = ki;
+    end
+    SUMbk1 = ks*bs(1,:)';
+    SUMbk2 = ks*bs(2,:)';
+    XB1 = XA + h*SUMbk1;
+    XB2 = XA + h*SUMbk2;
+    num_evals = s;
+end
+
+function [XB, num_evals, h_next, redo] = explicit_RK_variable_step(rate_func_in,t,XA,h,BT_struct,p,error_desired)
+    alpha = 1.5;
+
+    redo = false;
+    [XB1, XB2, num_evals] = RK_step_embedded(rate_func_in,t,XA,h,BT_struct);
+    epsc = abs(XB1-XB2);
+    temp = (error_desired/epsc)^(1/p);
+    h_next = min(0.9*temp, alpha)*h;
+    
+    if error_desired < epsc
+        redo = true;
+    end
+end
+
+function [t_list, X_list, h_avg, num_evals] = fixed_step_integration(rate_func_in, step_func, tspan, X0, h_ref, BT_struct)
+    ti = tspan(1); tf = tspan(2);
+    N  = ceil((tf - ti)/h_ref); h_avg = (tf - ti)/N;
+    t_list = linspace(ti, tf, N+1);
+    nx = numel(X0); X_list = zeros(nx, N+1); X_list(:,1) = X0;
+    num_evals = 0; XA = X0;
+    for k = 1:N
+        [XB, add_evals] = step_func(rate_func_in, t_list(k), XA, h, BT_struct, p, error_desired);
+        num_evals = num_evals + add_evals;
+        X_list(:,k+1) = XB; XA = XB;
+    end
+end
+
+function [t_list,X_list,h_avg, num_evals] = explicit_RK_variable_step_integration(rate_func_in,tspan,X0,h_ref,BT_struct, p, error_desired)
+    [t_list,X_list,h_avg, num_evals] = fixed_step_integration(rate_func_in,@RK_step_embedded,tspan,X0,h_ref,BT_struct, p, error_desired);
+end
+
+function dVdt = gravity_rate_func(t,V,orbit_params)
+    xp = V(1);
+    yp = V(2);
+    r = [xp, yp];
+    vxp = V(3);
+    vyp = V(4);
+    theta = atan(yp/xp);
+    ms = orbit_params.m_sun;
+    mp = orbit_params.m_planet;
+    G = orbit_params.G;
+    d = norm(r);
+    acc = -ms*G/d;
+    A = zeros(length(V), length(V));
+    A(1, 3) = 1;
+    A(2, 4) = 1;
+    A(3, 1) = acc;
+    A(4, 2) = acc;
+    dVdt = A*V;
+end
+
+function DVdt = testfunc(t, X, params)
+    DVdt = -5*X;
+end
