@@ -31,7 +31,7 @@ function coopervariable()
 
     figure
     subplot(2,1,1)
-    plot(t_list, X_list(1,:), "r--", "DisplayName", "Runge-Kutta")
+    plot(t_list, X_list(1,:), "r--", "DisplayName", "Dormand-Prince")
     legend()
     title('x position over time - runge-kutta')
     subplot(2,1,2)
@@ -41,7 +41,7 @@ function coopervariable()
 
     figure
     subplot(2,1,1)
-    plot(X_list(1,:), X_list(2,:), "r--", "DisplayName", "Runge-Kutta")
+    plot(X_list(1,:), X_list(2,:), "r--", "DisplayName", "Dormand-Prince")
     legend()
     title('y vs x position of earth - runge-kutta')
     subplot(2,1,2)
@@ -52,7 +52,7 @@ function coopervariable()
 
     figure
     hold on
-    plot(X_list(1,:), X_list(2,:), "r--", "DisplayName", "Runge-Kutta")
+    plot(X_list(1,:), X_list(2,:), "r^", "DisplayName", "Dormand-Prince")
     plot(V_list(:,1), V_list(:,2), 'b', "DisplayName", "Secant Method")
     legend()
     title('y vs x position of earth')
