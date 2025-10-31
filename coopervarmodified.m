@@ -109,13 +109,19 @@ function coopervarmodified()
     end
 
     figure
-    %fix - global error
     loglog(h_ref_list, abs_diff_list, DisplayName='f(t+h)-f(t)')
     hold on
     loglog(h_ref_list, approx_diff_list, DisplayName='XB2-XB1')
     loglog(h_ref_list, tr_error_list1, DisplayName=['XB1 ' char(949) '_{local}'])
     loglog(h_ref_list, tr_error_list2, DisplayName=['XB2 ' char(949) '_{local}'])
+    xlabel('Step Size (h)')
+    ylabel('Errors')
+    title('Local Differences vs. Step Size')
     legend(Location='southeast')
+
+    [p_xb1,k_xb1] = loglog_fit(h_ref_list, tr_error_list1)
+    [p_xb2,k_xb2] = loglog_fit(h_ref_list, tr_error_list2)
+    [p_xb12,k_xb12] = loglog_fit(h_ref_list, approx_diff_list)
 
     
     % Plot the local truncation errors of XB1 and XB2 as a function of their difference, |XB1 − XB2|
@@ -124,7 +130,10 @@ function coopervarmodified()
     hold on
     loglog(approx_diff_list, tr_error_list2, DisplayName=['XB2 ' char(949) '_{local}'])
     loglog(approx_diff_list, approx_diff_list, 'k--', DisplayName='(XB1-XB2)')
+    xlabel('XB1-XB2 (Approximated Difference)')
+    ylabel('Differences to Compare')
     title(['XB1 and XB2 ', char(949), '_{local}' ' vs (XB1-XB2)'])
+    legend(Location='southeast')
 
 end
 
@@ -217,4 +226,23 @@ end
 
 function DVdt = testfunc(t, X, params)
     DVdt = -5*X;
+end
+
+% log-log linear fit helper
+function [p,k] = loglog_fit(x_regression,y_regression,varargin)
+    if size(x_regression,1)==1, x_regression = abs(x_regression)'; end
+    if size(y_regression,1)==1, y_regression = abs(y_regression)'; end
+    if nargin==3
+        fp = varargin{1}; N = length(x_regression); idx = (1:N).';
+        mask = true(N,1);
+        if isfield(fp,'min_index'), mask = mask & idx>=fp.min_index; end
+        if isfield(fp,'max_index'), mask = mask & idx<=fp.max_index; end
+        if isfield(fp,'min_xval'),  mask = mask & x_regression>=fp.min_xval; end
+        if isfield(fp,'max_xval'),  mask = mask & x_regression<=fp.max_xval; end
+        if isfield(fp,'min_yval'),  mask = mask & y_regression>=fp.min_yval; end
+        if isfield(fp,'max_yval'),  mask = mask & y_regression<=fp.max_yval; end
+        x_regression = x_regression(mask); y_regression = y_regression(mask);
+    end
+    Y = log(y_regression); X = [log(x_regression), ones(length(x_regression),1)];
+    coeff = regress(Y, X); p = coeff(1); k = exp(coeff(2));
 end
