@@ -1,4 +1,4 @@
-function coopervarmodified()
+function copyvarmod()
     orbit_params = struct();
     orbit_params.m_sun = 1;
     orbit_params.m_planet = 1/330000;
@@ -28,16 +28,22 @@ function coopervarmodified()
     % h0 = 1/36.5;
     h0 = 1;
     %test working
-    des_err = 10^-2.5;
-    [t_list,X_list,h_avg, num_evals, fail_rate, h_rec] = explicit_RK_variable_step_integration(grav_wrapper, tspan, V0, h0, DormandPrince, 5, des_err);
+    des_err = 10^-7;
+    [t_list_var,X_list_var,h_avg_var, num_evals_var, fail_rate_var, h_rec] = explicit_RK_variable_step_integration(grav_wrapper, tspan, V0, h0, DormandPrince, 5, des_err);
     % [t_list,X_list] = ode45(grav_wrapper, tspan, V0);
     % X_list = X_list';
     tforV = linspace(ti,tf, 366);
     V_list = compute_planetary_motion(tforV, V0, orbit_params);
-    global_trunc = norm(V_list(end,:)'-X_list(:,end))
-    h_avg
-    num_evals
-    fail_rate
+    global_trunc_var = norm(V_list(end,:)'-X_list_var(:,end))
+    h_avg_var
+    num_evals_var
+    fail_rate_var
+
+
+    [t_list_fix,X_list_fix,h_avg_fix,num_evals_fix] = explicit_RK_fixed_step_integration(grav_wrapper,tspan,V0,h_avg_var,DormandPrince);
+    global_trunc_fix = norm(V_list(end,:)'-X_list_fix(:,end))
+    h_avg_fix
+    num_evals_fix
 
     figure
     % subplot(2,1,1)
@@ -45,36 +51,51 @@ function coopervarmodified()
     plot(tforV, V_list(:,1), 'b', "DisplayName", "Secant Method")
     % plot(t_list, X_list(1,:), "r--", "DisplayName", "Dormand-Prince")
 
-    plot(t_list, X_list(1,:), "k-", "DisplayName", "Dormand-Prince",'LineWidth',1);
-    plot(t_list, X_list(1,:), "ro",'markerfacecolor','r', "DisplayName", "Dormand-Prince",'markersize',4);
-    
+    plot(t_list_var, X_list_var(1,:), "k-", "DisplayName", "Dormand-Prince",'LineWidth',1);
+    plot(t_list_var, X_list_var(1,:), "ro",'markerfacecolor','r', "DisplayName", "Dormand-Prince (Var)",'markersize',4);
+    plot(t_list_var, X_list_fix(1,:), "ro",'markerfacecolor','r', "DisplayName", "Dormand-Prince (Fix)",'markersize',4);
     % xlim([min(t_list),max(t_list)])
     % legend()
     % title('x position over time - runge-kutta')
     % subplot(2,1,2)
     % plot(tforV, V_list(:,1), 'b', "DisplayName", "Secant Method")
-    xlim([min(t_list),max(t_list)])
+    xlim([min(t_list_var),max(t_list_var)])
     legend()
     title('x position over time - secant')
 
     figure
     subplot(2,1,1)
-    plot(X_list(1,:), X_list(2,:), "r--", "DisplayName", "Dormand-Prince")
+    plot(X_list_var(1,:),X_list_var(2,:),'ro-','markerfacecolor','k','markeredgecolor','k','markersize',2, "DisplayName", "Position")
     legend()
-    title('y vs x position of earth - runge-kutta')
+    title('y vs x Position of Body - Dormand Prince')
     subplot(2,1,2)
-    plot(V_list(:,1), V_list(:,2), 'b', "DisplayName", "Secant Method")
+    plot(V_list(:,1), V_list(:,2),'ro-','markerfacecolor','k','markeredgecolor','k','markersize',2, "DisplayName", "Velocity")
     legend()
-    title('y vs x position of earth - secant')
+    title('y vs x Velocity of Body - Dormand Prince')
+
+    %Step Size vs. Distance Between Planet and Sun
+    % h_list = diff(t_list_var);
+    figure
+    x2s = X_list_var(1,1:end-1).^2;
+    y2s = X_list_var(2,1:end-1).^2;
+    dists = (x2s+y2s).^0.5;
+    semilogx(h_rec, dists, 'ro-','markerfacecolor','k','markeredgecolor','k','markersize',2)
+    xlabel('Distance Between Planet and Sun')
+    ylabel('Step Size')
+    title('Step Size vs. Distance Between Planet and Sun')
+
+
 
 
     figure
     hold on
-    plot(X_list(1,:), X_list(2,:), "k", "DisplayName", "Dormand-Prince",'LineWidth',1)
-    plot(X_list(1,:), X_list(2,:), "ro", "DisplayName", "Dormand-Prince",'MarkerFaceColor','r','MarkerSize',4)
-    plot(V_list(:,1), V_list(:,2), 'b', "DisplayName", "Secant Method")
+    plot(X_list_var(1,:), X_list_var(2,:), "ro", "DisplayName", "Dormand-Prince (Var)",'MarkerFaceColor','r','MarkerSize',4)
+    plot(X_list_var(1,:), X_list_var(2,:), "g", "DisplayName", "Dormand-Prince (Var)",'LineWidth',1)
+    plot(X_list_fix(1,:), X_list_fix(2,:), "b", "DisplayName", "Dormand-Prince (Fix)",'LineWidth',1)
+    plot(X_list_fix(1,:), X_list_fix(2,:), "co", "DisplayName", "Dormand-Prince (Fix)",'MarkerFaceColor','c','MarkerSize',4)
+    plot(V_list(:,1), V_list(:,2), 'k', "DisplayName", "Secant Method")
     plot(0,0, 'ko','MarkerFaceColor','k','MarkerSize',4, DisplayName='Sun')
-    axis equal
+    axis auto
     legend()
     title('y vs x position of earth')
 
@@ -84,10 +105,10 @@ function coopervarmodified()
     tr_error_list = [];
 
     % time vs h - is step size changing dynamically?
-    figure
-    hold on
-    plot(t_list(1:end-1), h_rec(1:end),'k','LineWidth',1)
-    plot(t_list(1:end-1), h_rec(1:end),'ro','MarkerFaceColor','r','MarkerSize',5)
+    % figure
+    % hold on
+    % plot(t_list(1:end-1), h_rec(1:end),'k','LineWidth',1)
+    % plot(t_list(1:end-1), h_rec(1:end),'ro','MarkerFaceColor','r','MarkerSize',5)
 
     %for your chosen method, do the following... (variable runge kutta)
     n_samples = 60;
@@ -110,6 +131,61 @@ function coopervarmodified()
         tr_error_list1(i) = norm(XB1-V_list);
         tr_error_list2(i) = norm(XB2-V_list);
     end
+
+
+    %global truncation error!!!!
+    des_err_list = logspace(-15, -.5, 150);
+    V_list = compute_planetary_motion(tf,V0,orbit_params);
+    abs_diff_var = zeros(length(des_err_list),1);
+    abs_diff_fix = zeros(length(des_err_list),1);
+    havgs_var = zeros(length(des_err_list),1);
+    havgs_fix = zeros(length(des_err_list),1);
+    num_evals_var_list = zeros(length(des_err_list),1);
+    num_evals_fix_list = zeros(length(des_err_list),1);
+    fail_rate_var_list = zeros(length(des_err_list),1); 
+    for i = 1:length(des_err_list)
+        des_err = des_err_list(i);
+        [t_list_var,X_list_var,h_avg_var, num_evals_var, fail_rate_var, h_rec] = explicit_RK_variable_step_integration(grav_wrapper, tspan, V0, 0.1, DormandPrince, 5, des_err);
+        abs_diff_var(i) = norm(V_list-X_list_var(:,end));
+        havgs_var(i) = h_avg_var;
+        num_evals_var_list(i) = num_evals_var;
+        fail_rate_var_list(i) = fail_rate_var;
+        [t_list_fix,X_list_fix,h_avg_fix,num_evals_fix] = explicit_RK_fixed_step_integration(grav_wrapper,tspan,V0,h_avg_var,DormandPrince);
+        abs_diff_fix(i) = norm(V_list-X_list_fix(:,end));
+        havgs_fix(i) = h_avg_fix;
+        num_evals_fix_list(i) = num_evals_fix;
+    end
+
+    %Global Truncation Error vs. Step Size
+    figure
+    loglog(havgs_fix, abs_diff_fix, DisplayName='Fixed Step')
+    hold on
+    loglog(havgs_var, abs_diff_var, DisplayName='Variable Step')
+    axis auto
+    xlabel('Average Step Size (h)')
+    ylabel('Global Truncation Error')
+    title('Global Truncation Error vs. Step Size')
+    legend(location="southeast")
+
+    %Global Truncation Error vs. Number of Function Evaluations
+    figure
+    loglog(num_evals_fix_list, abs_diff_fix, DisplayName='Fixed Step')
+    hold on
+    loglog(num_evals_var_list, abs_diff_var, DisplayName='Variable Step')
+    axis auto
+    xlabel('Number of Function Evaluations')
+    ylabel('Global Truncation Error')
+    title('Global Truncation Error vs. Number of Function Evaluations')
+    legend(location="northeast")
+
+    %Failure Rate vs. Step Size
+    figure
+    semilogx(havgs_var, fail_rate_var_list, DisplayName='Dormand Prince')
+    axis auto
+    xlabel('Step Size')
+    ylabel('Failure Rate')
+    title('Failure Rate vs. Step Size')
+    legend(location="northeast")
 
     figure
     loglog(h_ref_list, abs_diff_list, DisplayName='f(t+h)-f(t)')
@@ -258,4 +334,39 @@ function [p,k] = loglog_fit(x_regression,y_regression,varargin)
     end
     Y = log(y_regression); X = [log(x_regression), ones(length(x_regression),1)];
     coeff = regress(Y, X); p = coeff(1); k = exp(coeff(2));
+end
+
+function [XB, num_evals] = explicit_RK_step(rate_func_in,t,XA,h,BT_struct)
+    as = BT_struct.A;
+    bs = BT_struct.B;
+    bs = bs(1,:);
+    cs = BT_struct.C;
+    s = length(cs);
+    m = length(XA);
+    ks = zeros(m, s);
+    for i = 1:s
+        SUMak = ks*(as(i,:)');
+        ki = rate_func_in((t+cs(i)*h), (XA+h*SUMak));
+        ks(:, i) = ki;
+    end
+    SUMbk = ks*bs';
+    XB = XA + h*SUMbk;
+    num_evals = s;
+end
+
+function [t_list, X_list, h_avg, num_evals] = fixed_step_integration(rate_func_in, step_func, tspan, X0, h_ref, BT_struct)
+    ti = tspan(1); tf = tspan(2);
+    N  = ceil((tf - ti)/h_ref); h_avg = (tf - ti)/N;
+    t_list = linspace(ti, tf, N+1);
+    nx = numel(X0); X_list = zeros(nx, N+1); X_list(:,1) = X0;
+    num_evals = 0; XA = X0;
+    for k = 1:N
+        [XB, add_evals] = step_func(rate_func_in, t_list(k), XA, h_avg, BT_struct);
+        num_evals = num_evals + add_evals;
+        X_list(:,k+1) = XB; XA = XB;
+    end
+end
+
+function [t_list,X_list,h_avg, num_evals] = explicit_RK_fixed_step_integration(rate_func_in,tspan,X0,h_ref,BT_struct)
+    [t_list,X_list,h_avg, num_evals] = fixed_step_integration(rate_func_in,@explicit_RK_step,tspan,X0,h_ref,BT_struct);
 end

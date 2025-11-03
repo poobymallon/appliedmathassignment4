@@ -28,7 +28,7 @@ function coopervarmodified()
     % h0 = 1/36.5;
     h0 = 1;
     %test working
-    des_err = 10^-2.5;
+    des_err = 1e-6;
     [t_list,X_list,h_avg, num_evals, fail_rate, h_rec] = explicit_RK_variable_step_integration(grav_wrapper, tspan, V0, h0, DormandPrince, 5, des_err);
     % [t_list,X_list] = ode45(grav_wrapper, tspan, V0);
     % X_list = X_list';
@@ -122,18 +122,18 @@ function coopervarmodified()
     title('Local Differences vs. Step Size')
     legend(Location='southeast')
 
-    hfilt = h_ref_list<10^-1.5 & h_ref_list>10^-2;
-    hfiltered = h_ref_list(hfilt);
-    tr1filtered = tr_error_list1(hfilt);
-    tr2filtered = tr_error_list2(hfilt);
-    difffiltered = approx_diff_list(hfilt);
-    [p_xb1,k_xb1] = loglog_fit(hfiltered, tr1filtered);
-    [p_xb2,k_xb2] = loglog_fit(hfiltered, tr2filtered);
-    [p_xb12,k_xb12] = loglog_fit(hfiltered, difffiltered);
-    % fprintf('\n  Fitted slopes p for error vs h  \n');
-    % fprintf('  %-14s  p ≈ %6.3f\n', 'XB1 local truncation error', p_xb1);
-    % fprintf('  %-14s  p ≈ %6.3f\n', 'XB2 local truncation error', p_xb2);
-    % fprintf('  %-14s  p ≈ %6.3f\n', 'XB1-XB2 error approximation', p_xb12);
+    tr1filt = tr_error_list1<10^-1.5 & tr_error_list1>10^-2.1;
+    tr2filt = tr_error_list2<10^-1.5 & tr_error_list2>10^-2.1
+    tr1filtered = tr_error_list1(tr_error_list1<10^-1.5 & tr_error_list1>10^-2.1);
+    tr2filtered = tr_error_list2(tr_error_list2<10^-1.5 & tr_error_list2>10^-2.1);
+    difffiltered = approx_diff_list(approx_diff_list<10^-1.5 & approx_diff_list>10^-2.1);
+    [p_xb1,k_xb1] = loglog_fit(h_ref_list, tr1filtered)
+    [p_xb2,k_xb2] = loglog_fit(h_ref_list, tr2filtered)
+    [p_xb12,k_xb12] = loglog_fit(h_ref_list, difffiltered)
+    fprintf('\n  Fitted slopes p for error vs h  \n');
+    fprintf('  %-14s  p ≈ %6.3f\n', 'XB1 local truncation error', p_xb1);
+    fprintf('  %-14s  p ≈ %6.3f\n', 'XB2 local truncation error', p_xb2);
+    fprintf('  %-14s  p ≈ %6.3f\n', 'XB1-XB2 error approximation', p_xb12);
 
 
     
